@@ -3,6 +3,7 @@
 import argparse
 import base64
 import collections
+import math
 import random
 
 
@@ -82,8 +83,31 @@ def fixed_xor(x: str, y: str) -> str:
 
 # cryptopals challenges set 1, challenge 3
 # Single-byte XOR cipher
+
+
+# Compute cross correlation of frequency tables of equal size
+# https://anomaly.io/understand-auto-cross-correlation-normalized-shift/
+def cross_correlation(a: dict, b: dict, normalised=True) -> float:
+    # Skip empty tables
+    if all(v == 0 for v in a.values()) or all(v == 0 for v in a.values()):
+        return 0
+    c = sum([a[i] * b[i] for i in b.keys()])
+    if normalised:
+        c /= math.sqrt(
+                sum([a[i] ** 2 for i in a.keys()]) *
+                sum([b[i] ** 2 for i in b.keys()]))
+    return c
+
+
+def hellinger_distance(a: dict, b: dict, normalised=True) -> float:
+    h = math.sqrt(sum((math.sqrt(a[i]) - math.sqrt(b[i])) ** 2 for i in a.keys()))
+    if normalised:
+        h /= math.sqrt(2)
+    return h
+
+
 # Analyse character frequency in supplied plaintext, compare it against English
-# character frequency and return the correlation of the two distributions
+# character frequency and return a score
 def compare_frequency(b: bytes) -> float:
     counts = {}
     # Count occurrences of letters in plaintext
@@ -98,13 +122,17 @@ def compare_frequency(b: bytes) -> float:
     freq_table = {}
     for k in english_freq_table.keys():
         if k in counts:
+            # Should we normalize the frequency over all characters (letter
+            # frequencies won't add up to 1) or only over letters?
+            # freq_table[k] = counts[k] / sum(counts.values())
             freq_table[k] = counts[k] / len(b)
         else:
             freq_table[k] = 0
-    # Compute correlation of frequency tables
-    corr = sum([freq_table[i] * (english_freq_table[i] / 100) for i in english_freq_table.keys()])
 
-    return corr, freq_table
+    # score = cross_correlation(freq_table, english_freq_table)
+    score = 1 - hellinger_distance(freq_table, english_freq_table)
+
+    return score, freq_table
 
 
 def decrypt_bytewise(c: bytes, k: int) -> bytes:
@@ -123,16 +151,24 @@ def crack_ciphertext(c: str) -> str:
     print_bar_chart(sorted(english_freq_table.items()))
 
     for k in range(0, 256):
-        p = decrypt_bytewise(b, k)
-        plaintexts[k] = p
+        plaintexts[k] = decrypt_bytewise(b, k)
 
-        key_scores[k], freq_tables[k] = compare_frequency(p)
+        # Summarily discard strings which contain non-utf characters
+        try:
+            plaintexts[k].decode('utf-8')
+        except UnicodeDecodeError:
+            continue
+        # Summarily discard strings which contain non printable characters
+        # (except newline)
+        if not plaintexts[k].decode().replace('\n', ' ').isprintable():
+            continue
+
+        key_scores[k], freq_tables[k] = compare_frequency(plaintexts[k])
         # Keep track of best key
         if best_key is None or key_scores[k] > key_scores[best_key]:
             best_key = k
 
-    best_key = 88
-    print(f"Key: {best_key} ({best_key.to_bytes()}), corr {key_scores[best_key]}")
+    print(f"Key: {best_key} ({best_key.to_bytes()}), score {key_scores[best_key]}")
     print(plaintexts[best_key])
     print_bar_chart(sorted(freq_tables[best_key].items()))
     print(sorted(key_scores.items(), key=lambda x:x[1], reverse=True)[:5])
