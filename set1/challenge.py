@@ -165,8 +165,9 @@ def compare_frequency(b: bytes) -> float:
     return score, freq_table
 
 
-def decrypt_bytewise(c: bytes, k: int) -> bytes:
-    return bytes(c_n ^ k for c_n in c)
+def bytewise_xor(c: bytes, k: bytes) -> bytes:
+    keystream = (k * math.ceil(len(c) / len(k)))[:len(c)]
+    return bytes(c_n ^ k_n for c_n, k_n in zip(c, keystream))
 
 
 def crack_ciphertext(c: str) -> str:
@@ -185,7 +186,7 @@ def crack_ciphertext(c: str) -> str:
         # print_bar_chart(sorted(english_freq_table.items()))
 
     for k in range(0, 256):
-        plaintexts[k] = decrypt_bytewise(b, k)
+        plaintexts[k] = bytewise_xor(b, k.to_bytes())
 
         # Summarily discard strings which contain non-utf characters
         try:
