@@ -106,6 +106,21 @@ def hellinger_distance(a: dict, b: dict, normalised=True) -> float:
     return h
 
 
+def kl_divergence(a: dict, b: dict) -> float:
+    d = sum(b[i] * math.log(b[i] / a[i]) for i in b.keys())
+    return d
+
+
+def bhattacharyya_coefficient(a: dict, b: dict) -> float:
+    d = sum(math.sqrt(a[i] * b[i]) for i in b.keys())
+    return d
+
+
+def chi_square(a: dict, b: dict) -> float:
+    x = sum(((a[i] - b[i]) ** 2) / b[i] for i in b.keys())
+    return x
+
+
 # Analyse character frequency in supplied plaintext, compare it against English
 # character frequency and return a score
 def compare_frequency(b: bytes) -> float:
@@ -129,8 +144,23 @@ def compare_frequency(b: bytes) -> float:
         else:
             freq_table[k] = 0
 
+    # Cross correlation is kind of a meaningless measure, turns out, as it
+    # only gives us the cos of the angle between the two n-dimensional vectors
     # score = cross_correlation(freq_table, english_freq_table)
-    score = 1 - hellinger_distance(freq_table, english_freq_table)
+    # The arccos of the dot product gives us the angle between the two
+    # n-dimensional vectors. Turns out this is not good either
+    # score = 1 - (math.acos(cross_correlation(freq_table, english_freq_table)) / math.pi)
+    # Hellinger distance is already pretty good
+    # score = 1 - hellinger_distance(freq_table, english_freq_table)
+    # Kullback-Leibler divergence does not apply because both distributions
+    # could conceivably contain zeroes
+    # score = kl_divergence(freq_table, english_freq_table)
+    # The Bhattacharyya coefficient has a striking resemblance to
+    # cross-correlation, except the square root is applied to each sum element.
+    # It is actually related to the Hellinger distance: H(P,Q) = sqrt(1 - BC(P-Q)
+    score = bhattacharyya_coefficient(freq_table, english_freq_table)
+    # chi-squared might not be meaningful but it works quite well
+    #score = 1 / chi_square(freq_table, english_freq_table)
 
     return score, freq_table
 
@@ -168,10 +198,15 @@ def crack_ciphertext(c: str) -> str:
         if best_key is None or key_scores[k] > key_scores[best_key]:
             best_key = k
 
-    print(f"Key: {best_key} ({best_key.to_bytes()}), score {key_scores[best_key]}")
-    print(plaintexts[best_key])
-    print_bar_chart(sorted(freq_tables[best_key].items()))
-    print(sorted(key_scores.items(), key=lambda x:x[1], reverse=True)[:5])
+    if best_key is None:
+        raise ValueError("Nothing found")
+
+    if DEBUG:
+        print(f"Key:       {best_key} ({best_key.to_bytes()}), score {key_scores[best_key]}")
+        print(f"Plaintext: {plaintexts[best_key].decode()}")
+        print_bar_chart(sorted(freq_tables[best_key].items()))
+        print(sorted(key_scores.items(), key=lambda x:x[1], reverse=True)[:5])
+    return plaintexts[best_key], best_key, key_scores[best_key]
 
 
 if __name__ == "__main__":
