@@ -239,9 +239,19 @@ def detect_ciphertext(filename: str):
     print(f"Plaintext:  {plaintexts[best_line].decode()}")
 
 
+# cryptopals challenges set 1, challenge 5
+# Implement repeating-key XOR
+def encrypt_xor(p: str, k: str) -> str:
+    c_b = bytewise_xor(bytes(p, 'utf-8'), bytes(k, 'utf-8'))
+    return c_b.hex()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('x')
+    #parser.add_argument('x')
     args = parser.parse_args()
 
-    detect_ciphertext(args.x)
+    text = """Burning 'em, if you ain't quick and nimble
+I go crazy when I hear a cymbal"""
+    key = "ICE"
+    print(encrypt_xor(text, key))
