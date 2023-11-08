@@ -176,9 +176,13 @@ def crack_ciphertext(c: str) -> str:
     plaintexts = {}
     freq_tables = {}
     best_key = None
+    DEBUG = False
 
-    print("English text distribution")
-    print_bar_chart(sorted(english_freq_table.items()))
+    if DEBUG:
+        print(f"Ciphertext: {c}")
+        print(b)
+        # print("English text distribution")
+        # print_bar_chart(sorted(english_freq_table.items()))
 
     for k in range(0, 256):
         plaintexts[k] = decrypt_bytewise(b, k)
@@ -209,9 +213,34 @@ def crack_ciphertext(c: str) -> str:
     return plaintexts[best_key], best_key, key_scores[best_key]
 
 
+# cryptopals challenges set 1, challenge 4
+# Detect single-character XOR
+def detect_ciphertext(filename: str):
+    with open(filename) as f:
+        lines = f.read().splitlines()
+
+    scores = {}
+    plaintexts = {}
+    keys = {}
+    best_line = None
+
+    for e in lines:
+        try:
+            plaintexts[e], keys[e], scores[e] = crack_ciphertext(e)
+        except ValueError as err:
+            continue
+        # Keep track of best line
+        if best_line is None or scores[e] > scores[best_line]:
+            best_line = e
+
+    print(f"Ciphertext: {e} ({lines.index(e)})")
+    print(f"Key:        {keys[best_line]} ({keys[best_line].to_bytes()}), score {scores[best_line]}")
+    print(f"Plaintext:  {plaintexts[best_line].decode()}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('x')
     args = parser.parse_args()
 
-    crack_ciphertext(args.x)
+    detect_ciphertext(args.x)
