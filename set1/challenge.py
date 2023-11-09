@@ -170,9 +170,7 @@ def bytewise_xor(c: bytes, k: bytes) -> bytes:
     return bytes(c_n ^ k_n for c_n, k_n in zip(c, itertools.cycle(k)))
 
 
-def crack_ciphertext(c: str) -> str:
-    b = bytes.fromhex(c)
-
+def crack_ciphertext_single_byte_key(b: bytes) -> str:
     key_scores = {}
     plaintexts = {}
     freq_tables = {}
@@ -227,7 +225,7 @@ def detect_ciphertext(filename: str):
 
     for e in lines:
         try:
-            plaintexts[e], keys[e], scores[e] = crack_ciphertext(e)
+            plaintexts[e], keys[e], scores[e] = crack_ciphertext_single_byte_key(bytes.fromhex(e))
         except ValueError as err:
             continue
         # Keep track of best line
@@ -248,10 +246,13 @@ def encrypt_xor(p: str, k: str) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    #parser.add_argument('x')
+    parser.add_argument('x')
     args = parser.parse_args()
 
-    text = """Burning 'em, if you ain't quick and nimble
+    TEST5 = True
+
+    if TEST5:
+        pl = """Burning 'em, if you ain't quick and nimble
 I go crazy when I hear a cymbal"""
-    key = "ICE"
-    print(encrypt_xor(text, key))
+        k = "ICE"
+        print(encrypt_xor(pl, k))
