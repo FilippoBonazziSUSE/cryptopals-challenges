@@ -269,6 +269,15 @@ def bitwise_hamming_distance(a: bytes, b: bytes) -> int:
         return None
 
 
+# Compute the key size by finding the smallest key size with an outlier IC
+# (index of coincidence). The index of coincidence is significantly higher
+# in natural language strings than random text. This property is not altered by
+# simple character substitution, such as XORing text with a fixed value.
+# Repeating-key XOR using an N-byte key will encrypt every N-th character with
+# the same key byte, thus preserving statistical markers of natural text (such
+# as IC) in encrypted text sampled at periodicity N. Finding a significantly
+# high IC in text sampled at periodicity M suggests that M is a multiple of N.
+# The smallest M with the highest IC is probably N.
 def compute_ks(b: bytes, max_size=0):
     DEBUG = False
     ic = {}
