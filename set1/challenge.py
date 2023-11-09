@@ -3,6 +3,7 @@
 import argparse
 import base64
 import collections
+import itertools
 import math
 import random
 
@@ -166,8 +167,7 @@ def compare_frequency(b: bytes) -> float:
 
 
 def bytewise_xor(c: bytes, k: bytes) -> bytes:
-    keystream = (k * math.ceil(len(c) / len(k)))[:len(c)]
-    return bytes(c_n ^ k_n for c_n, k_n in zip(c, keystream))
+    return bytes(c_n ^ k_n for c_n, k_n in zip(c, itertools.cycle(k)))
 
 
 def crack_ciphertext(c: str) -> str:
