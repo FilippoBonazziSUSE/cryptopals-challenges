@@ -5,6 +5,7 @@ import base64
 import collections
 import itertools
 import math
+import statistics
 import random
 
 
@@ -244,15 +245,106 @@ def encrypt_xor(p: str, k: str) -> str:
     return c_b.hex()
 
 
+# cryptopals challenges set 1, challenge 6
+# Break repeating-key XOR
+
+def hamming_distance(a, b) -> int:
+    if len(a) == len(b):
+        return sum(char1 != char2 for char1, char2 in zip(a, b))
+    else:
+        return None
+
+
+# Check for 1's in a binary string using Brian Kernighan's Algorithm
+def bitwise_hamming_distance(a: bytes, b: bytes) -> int:
+    if len(a) == len(b):
+        count = 0
+        for i in range(len(a)):
+            x = a[i] ^ b[i]
+            while (x):
+                x = x & (x - 1)
+                count += 1
+        return count
+    else:
+        return None
+
+
+def compute_ks(b: bytes, max_size=0):
+    DEBUG = False
+    ic = {}
+
+    if max_size == 0:
+        max_size = len(b)
+
+    for step in range(1, max_size):
+        match = 0
+        total = 0
+        for i in range(len(b)):
+            for j in range(i + step, len(b), step):
+                total += 1
+                if b[i] == b[j]:
+                    match += 1
+        ic[step] = match / total
+
+    ic_mean = statistics.mean(ic.values())
+    ic_stdv = statistics.pstdev(ic.values())
+
+    best_ic_step = 0
+    for k, v in ic.items():
+        if v > ic_mean + (2 * ic_stdv):
+            best_ic_step = k
+            break
+    if DEBUG:
+        print("Key size (IC)")
+        print_bar_chart([(str(k), v) for k, v in ic.items()])
+        print(f"mean: {ic_mean}, stdev: {ic_stdv}")
+        print(f"Best IC step: {best_ic_step} ({ic[best_ic_step]})")
+    return best_ic_step, ic[best_ic_step]
+
+
+def vsplit(b: bytes, n: int) -> list[bytes]:
+    return [bytes(b[i::n]) for i in range(n)]
+
+
+def vjoin(c: list[bytes]) -> bytes:
+    return bytes(x for x in itertools.chain.from_iterable(itertools.zip_longest(*c)) if x)
+
+
+def crack_ciphertext(c: str) -> str:
+    b = base64.b64decode(c)
+
+    # Guess key size
+    k_s, _ = compute_ks(b, 100)
+
+    # Obtain a list of cyphertext byte arrays encrypted with the same key byte
+    # (split the cyphertext into columns by key byte)
+    columns = vsplit(b, k_s)
+
+    plaintexts = {}
+    keys = {}
+    for i in range(len(columns)):
+        plaintexts[i], keys[i], _ = crack_ciphertext_single_byte_key(columns[i])
+
+    plaintext = vjoin(plaintexts.values())
+    key = bytes(keys.values())
+    print(f"Key: {key.decode()}")
+    print(plaintext.decode())
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('x')
     args = parser.parse_args()
 
-    TEST5 = True
+    TEST5 = False
+    TEST6 = True
 
     if TEST5:
         pl = """Burning 'em, if you ain't quick and nimble
 I go crazy when I hear a cymbal"""
         k = "ICE"
         print(encrypt_xor(pl, k))
+
+    if TEST6:
+        with open(args.x) as f:
+            crack_ciphertext(f.read().replace('\n', ''))
